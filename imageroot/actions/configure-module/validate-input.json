@@ -1,13 +1,14 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "Configure kickstart",
-    "$id": "http://nethserver.org/json-schema/task/input/kickstart/configure-module",
-    "description": "Configure kickstart",
+    "title": "Configure xwiki",
+    "$id": "http://nethserver.org/json-schema/task/input/xwiki/configure-module",
+    "description": "Configure xwiki",
     "examples": [
         {
-            "host": "kickstart.domain.org",
+            "host": "xwiki.domain.org",
             "http2https": true,
-            "lets_encrypt": true
+            "lets_encrypt": true,
+            "java_heap_mb": 1024
         }
     ],
     "type": "object",
@@ -17,7 +18,7 @@
     "properties": {
         "host": {
             "type": "string",
-            "description": "Host name for the application, like 'kickstart.domain.org'",
+            "description": "Host name for the application, like 'xwiki.domain.org'",
             "format": "hostname",
             "pattern": "\\."
         },
@@ -30,6 +31,14 @@
             "type": "boolean",
             "title": "HTTP to HTTPS redirection",
             "description": "Redirect all the HTTP requests to HTTPS"
+        },
+        "java_heap_mb": {
+            "type": "integer",
+            "title": "JVM heap size (MB)",
+            "description": "XWiki Tomcat maximum heap memory in megabytes",
+            "minimum": 1024,
+            "maximum": 8192,
+            "default": 1024
         }
     }
 }
