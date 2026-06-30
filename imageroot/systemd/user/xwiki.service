@@ -1,0 +1,36 @@
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# This systemd unit starts a xwiki instance using Podman.
+# Most parts of this file come from podman-generate-systemd.
+#
+
+[Unit]
+Description=Podman xwiki.service
+Requires=mariadb-app.service xwiki-app.service
+Before=mariadb-app.service xwiki-app.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=-%S/state/environment
+Restart=always
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/xwiki.pid %t/xwiki.pod-id
+ExecStartPre=/usr/bin/podman pod create --infra-conmon-pidfile %t/xwiki.pid \
+    --pod-id-file %t/xwiki.pod-id \
+    --name xwiki \
+    --publish 127.0.0.1:${TCP_PORT}:8080 \
+    --network=slirp4netns:allow_host_loopback=true \
+    --add-host=accountprovider:10.0.2.2 \
+    --replace
+ExecStart=/usr/bin/podman pod start --pod-id-file %t/xwiki.pod-id
+ExecStop=/usr/bin/podman pod stop --ignore --pod-id-file %t/xwiki.pod-id -t 10
+ExecStopPost=/usr/bin/podman pod rm --ignore -f --pod-id-file %t/xwiki.pod-id
+PIDFile=%t/xwiki.pid
+Type=forking
+
+[Install]
+WantedBy=default.target

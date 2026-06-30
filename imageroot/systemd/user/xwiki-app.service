@@ -1,0 +1,41 @@
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+[Unit]
+Description=Podman xwiki-app.service
+BindsTo=xwiki.service
+After=xwiki.service mariadb-app.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+EnvironmentFile=-%S/state/passwords.env
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/xwiki-app.pid %t/xwiki-app.ctr-id
+ExecStartPre=runagent generate-xwiki-properties
+ExecStartPre=runagent generate-xwiki-cfg
+ExecStart=/usr/bin/podman run --conmon-pidfile %t/xwiki-app.pid \
+    --cidfile %t/xwiki-app.ctr-id --cgroups=no-conmon \
+    --pod-id-file %t/xwiki.pod-id --replace -d --name xwiki-app \
+    --volume xwiki-data:/usr/local/xwiki:Z \
+    --env-file=%S/state/environment \
+    --env-file=%S/state/passwords.env \
+    --env DB_USER=xwiki \
+    --env DB_DATABASE=xwiki \
+    --env DB_HOST=127.0.0.1 \
+    --volume %S/state/xwiki.cfg:/usr/local/tomcat/webapps/ROOT/WEB-INF/xwiki.cfg:Z \
+    --volume %S/state/xwiki.properties:/usr/local/tomcat/webapps/ROOT/WEB-INF/xwiki.properties:Z \
+    ${XWIKI_IMAGE}
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/xwiki-app.ctr-id -t 10
+ExecReload=/usr/bin/podman kill -s HUP xwiki-app
+SyslogIdentifier=%u
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/xwiki-app.ctr-id
+PIDFile=%t/xwiki-app.pid
+Type=forking
+
+[Install]
+WantedBy=xwiki.service

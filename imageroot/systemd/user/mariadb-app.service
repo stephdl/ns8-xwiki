@@ -1,34 +1,35 @@
 #
-# Copyright (C) 2022 Nethesis S.r.l.
+# Copyright (C) 2026 Nethesis S.r.l.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
 [Unit]
 Description=Podman mariadb-app.service
-BindsTo=kickstart.service
-After=kickstart.service
+BindsTo=xwiki.service
+After=xwiki.service
+Before=xwiki-app.service
 
 [Service]
 Environment=PODMAN_SYSTEMD_UNIT=%n
 EnvironmentFile=%S/state/environment
-# EnvironmentFile=%S/state/secrets/passwords.secret
+EnvironmentFile=-%S/state/passwords.env
 Restart=always
 TimeoutStopSec=70
 ExecStartPre=/bin/rm -f %t/mariadb-app.pid %t/mariadb-app.ctr-id
 ExecStart=/usr/bin/podman run --conmon-pidfile %t/mariadb-app.pid \
     --cidfile %t/mariadb-app.ctr-id --cgroups=no-conmon \
-    --pod-id-file %t/kickstart.pod-id --replace -d --name mariadb-app \
-    --env-file=%S/state/environment \
+    --pod-id-file %t/xwiki.pod-id --replace -d --name mariadb-app \
     --volume mysql-data:/var/lib/mysql/:Z \
-    --env MARIADB_ROOT_PASSWORD=Nethesis,1234 \
-    --env MARIADB_DATABASE=kickstart \
-    --env MARIADB_USER=kickstart \
-    --env MARIADB_PASSWORD=kickstart \
+    --volume %S/state/initdb.d:/docker-entrypoint-initdb.d:ro,Z \
+    --env MARIADB_ROOT_PASSWORD=${DB_ROOT_PASSWORD} \
+    --env MARIADB_DATABASE=xwiki \
+    --env MARIADB_USER=xwiki \
+    --env MARIADB_PASSWORD=${DB_PASSWORD} \
     --env MARIADB_AUTO_UPGRADE=1 \
     ${MARIADB_IMAGE} \
-    --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-ExecStartPost=/usr/bin/podman exec  mariadb-app /bin/bash -c 'printf "[client] \npassword=Nethesis,1234" > /root/.my.cnf'
-ExecStartPost=/usr/bin/podman exec mariadb-app /bin/bash -c "while ! mysqladmin ping -h localhost -P 3306 -u root; do sleep 1; done"
+    --character-set-server=utf8mb4 --collation-server=utf8mb4_bin \
+    --explicit-defaults-for-timestamp=1
+ExecStartPost=/bin/bash -c "until /usr/bin/podman exec mariadb-app mariadb-admin ping -h 127.0.0.1 -u root -p${DB_ROOT_PASSWORD} --silent 2>/dev/null; do sleep 2; done"
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/mariadb-app.ctr-id -t 10
 ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/mariadb-app.ctr-id
 ExecReload=/usr/bin/podman kill -s HUP mariadb-app
@@ -37,4 +38,4 @@ PIDFile=%t/mariadb-app.pid
 Type=forking
 
 [Install]
-WantedBy=default.target
+WantedBy=xwiki.service
