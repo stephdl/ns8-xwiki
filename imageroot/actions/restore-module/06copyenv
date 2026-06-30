@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #
-# Copyright (C) 2022 Nethesis S.r.l.
+# Copyright (C) 2026 Nethesis S.r.l.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
@@ -13,10 +13,17 @@ request = json.load(sys.stdin)
 
 original_environment = request['environment']
 
+# Restore non-secret environment variables (from Redis/state/environment).
+# Passwords are NOT listed here: state/passwords.env is restored automatically
+# by Restic (via etc/state-include.conf) and must never transit through Redis.
 for evar in [
         "TRAEFIK_HOST",
         "TRAEFIK_HTTP2HTTPS",
+        "JAVA_HEAP_MB",
+        "JAVA_OPTS",
+        "LDAP_DOMAIN",
     ]:
-    agent.set_env(evar, original_environment[evar])
+    if evar in original_environment:
+        agent.set_env(evar, original_environment[evar])
 
 agent.dump_env()
