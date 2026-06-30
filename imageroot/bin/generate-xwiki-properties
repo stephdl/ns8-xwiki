@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# generate-xwiki-properties — called as ExecStartPre in xwiki-app.service.
+# Ensures extension repositories are present in state/xwiki.properties.
+# The file is NOT replaced — only the missing property is appended.
+
+import os
+import re
+
+STATE_DIR = os.environ['AGENT_STATE_DIR']
+xwiki_properties = os.path.join(STATE_DIR, 'xwiki.properties')
+
+if os.path.exists(xwiki_properties):
+    with open(xwiki_properties) as f:
+        content = f.read()
+else:
+    content = ''
+
+
+def xwiki_set_property(text, key, value):
+    pattern = re.compile(r'^#? ?' + re.escape(key) + r' ?=.*$', re.MULTILINE)
+    replacement = f'{key}={value}'
+    if pattern.search(text):
+        return pattern.sub(replacement, text)
+    return text.rstrip('\n') + '\n' + replacement + '\n'
+
+
+if 'extension.repositories' not in content:
+    default_repos = (
+        'releases:maven:https://nexus.xwiki.org/nexus/content/groups/public/\n'
+        'extension:xwiki:https://extensions.xwiki.org/xwiki/bin/extensions/search'
+    )
+    content = xwiki_set_property(content, 'extension.repositories', default_repos)
+
+tmpfile = xwiki_properties + '.tmp'
+with open(tmpfile, 'w') as fp:
+    fp.write(content)
+os.replace(tmpfile, xwiki_properties)

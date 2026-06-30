@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# generate-xwiki-cfg — called as ExecStartPre in xwiki-app.service.
+# Reads state/xwiki.cfg (full defaults extracted from image by create-module/20init_data)
+# and modifies individual properties in place:
+#   - xwiki.home               (public URL behind Traefik)
+#   - xwiki.superadminpassword (from state/passwords.env)
+# Written atomically so a failure never leaves a partial file.
+
+import sys
+import os
+import re
+
+STATE_DIR = os.environ['AGENT_STATE_DIR']
+traefik_host = os.environ.get('TRAEFIK_HOST', '')
+xwiki_cfg = os.path.join(STATE_DIR, 'xwiki.cfg')
+
+# Read XWIKI_SUPERADMIN_PASSWORD from state/passwords.env
+superadmin_password = ''
+passwords_env = os.path.join(STATE_DIR, 'passwords.env')
+if os.path.exists(passwords_env):
+    with open(passwords_env) as f:
+        for line in f:
+            k, _, v = line.strip().partition('=')
+            if k == 'XWIKI_SUPERADMIN_PASSWORD':
+                superadmin_password = v
+                break
+
+# Read existing xwiki.cfg (full defaults extracted from the image at install time)
+if os.path.exists(xwiki_cfg):
+    with open(xwiki_cfg) as f:
+        content = f.read()
+else:
+    content = ''
+
+
+def xwiki_cfg_set(text, key, value):
+    """Replace or add a property in xwiki.cfg format.
+    Matches commented (#key=) and uncommented (key=) forms.
+    Appends if not found.
+    """
+    pattern = re.compile(r'^#? ?' + re.escape(key) + r' ?=.*$', re.MULTILINE)
+    replacement = f'{key}={value}'
+    if pattern.search(text):
+        return pattern.sub(replacement, text)
+    return text.rstrip('\n') + '\n' + replacement + '\n'
+
+
+def xwiki_cfg_clear(text, key):
+    """Comment out a property (disable it)."""
+    pattern = re.compile(r'^(' + re.escape(key) + r' ?=.*)$', re.MULTILINE)
+    return pattern.sub(r'# \1', text)
+
+
+if 'xwiki.plugins' not in content:
+    # File is empty or predates the image-extraction fix in create-module/20init_data.
+    # The update-module.d/10migrate_xwiki_cfg script re-extracts xwiki.cfg from the
+    # image at update time. If that hasn't run yet, inject the minimum plugin list
+    # so JSX/CssFX/SkinFile* plugins load and $xwiki.ssfx/$xwiki.jsfx are not null.
+    content = xwiki_cfg_set(
+        content,
+        'xwiki.plugins',
+        'com.xpn.xwiki.plugin.skinx.JsFX,'
+        'com.xpn.xwiki.plugin.skinx.CssFX,'
+        'com.xpn.xwiki.plugin.skinx.SkinFileJsFX,'
+        'com.xpn.xwiki.plugin.skinx.SkinFileCssFX,'
+        'com.xpn.xwiki.plugin.skinx.LinkFX,'
+        'com.xpn.xwiki.plugin.feed.FeedPlugin,'
+        'com.xpn.xwiki.plugin.fileupload.FileUploadPlugin,'
+        'com.xpn.xwiki.plugin.zipexplorer.ZipExplorerPlugin,'
+        'com.xpn.xwiki.plugin.diff.DiffPlugin,'
+        'com.xpn.xwiki.plugin.rightsmanager.RightsManagerPlugin,'
+        'com.xpn.xwiki.plugin.jodatime.JodaTimePlugin,'
+        'com.xpn.xwiki.plugin.scheduler.SchedulerPlugin,'
+        'com.xpn.xwiki.plugin.mailsender.MailSenderPlugin,'
+        'com.xpn.xwiki.plugin.activitystream.ActivityStreamPlugin',
+    )
+
+# Public URL — required for correct URL generation behind Traefik.
+# Without this, $xwiki.ssfx/$xwiki.jsfx resolve to 127.0.0.1 (Tomcat backend)
+# and CSS/JS links are unreachable from the browser.
+if traefik_host:
+    content = xwiki_cfg_set(content, 'xwiki.home', f'https://{traefik_host}/')
+else:
+    content = xwiki_cfg_clear(content, 'xwiki.home')
+
+# Superadmin password (enables programmatic API access)
+if superadmin_password:
+    content = xwiki_cfg_set(content, 'xwiki.superadminpassword', superadmin_password)
+
+tmpfile = xwiki_cfg + '.tmp'
+with open(tmpfile, 'w') as fp:
+    fp.write(content)
+os.replace(tmpfile, xwiki_cfg)
