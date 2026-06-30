@@ -19,26 +19,31 @@
     "no_services": "No services",
     "no_images": "No images",
     "no_volumes": "No volumes",
-    "kickstart_webapp": "kickstart webapp",
+    "xwiki_webapp": "xwiki webapp",
     "not_configured": "Not configured",
-    "open_webapp": "Open kickstart",
+    "open_webapp": "Open xwiki",
     "configure": "Configure"
   },
   "settings": {
     "title": "Settings",
     "configure_instance": "Configure {instance}",
     "save": "Save",
-    "kickstart_fqdn": "kickstart hostname (FQDN)",
+    "xwiki_fqdn": "xwiki hostname (FQDN)",
     "lets_encrypt": "Request LE Certificate",
     "http_to_https": "Force HTTPS",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "advanced": "Advanced",
     "configuring": "Configuring",
-    "instance_configuration": "Configure kickstart",
+    "instance_configuration": "Configure xwiki",
     "domain_already_used_in_traefik": "Domain already used in traefik",
     "host_pattern": "Must be a valid fully qualified domain name",
-    "host_format": "Must be a valid fully qualified domain name"
+    "host_format": "Must be a valid fully qualified domain name",
+    "java_heap_mb": "JVM heap size (MB)",
+    "java_heap_mb_description": "Maximum memory allocated to XWiki (Tomcat JVM). Increase if XWiki is slow or shows out-of-memory errors.",
+    "ldap_domain": "LDAP user domain",
+    "ldap_domain_placeholder": "Select or type a domain",
+    "ldap_domain_none": "None (built-in authentication)"
   },
   "about": {
     "title": "About"
