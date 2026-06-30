@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+# Initialize state directory with files required before first service start:
+#   - state/initdb.d/init.sql  : MariaDB first-run GRANT (enables sub-wikis)
+#   - state/xwiki.cfg          : Full default XWiki config (extracted from image)
+#   - state/xwiki.properties   : Full default XWiki properties (extracted from image)
+
+import sys
+import os
+import shutil
+import subprocess
+
+state_dir = os.environ['AGENT_STATE_DIR']
+install_dir = os.environ['AGENT_INSTALL_DIR']
+xwiki_image = os.environ.get('XWIKI_IMAGE', 'docker.io/xwiki:18.5.0-mariadb-tomcat')
+
+# --- MariaDB init SQL (sub-wiki GRANT) ---
+initdb_dir = os.path.join(state_dir, 'initdb.d')
+os.makedirs(initdb_dir, exist_ok=True)
+dst_sql = os.path.join(initdb_dir, 'init.sql')
+if not os.path.exists(dst_sql):
+    shutil.copy2(os.path.join(install_dir, 'sql', 'init.sql'), dst_sql)
+
+# --- Full default xwiki.cfg extracted from the container image ---
+# We keep the FULL defaults so that xwiki.plugins (JSX, CssFX, SkinFile* …) and
+# all other compiled-in declarations survive. generate-xwiki-cfg then modifies
+# individual properties (xwiki.home, superadmin password, LDAP) in place.
+xwiki_cfg = os.path.join(state_dir, 'xwiki.cfg')
+if not os.path.exists(xwiki_cfg):
+    try:
+        result = subprocess.run(
+            [
+                'podman', 'run', '--rm', '--quiet',
+                xwiki_image,
+                'cat', '/usr/local/tomcat/webapps/ROOT/WEB-INF/xwiki.cfg',
+            ],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            tmpfile = xwiki_cfg + '.tmp'
+            with open(tmpfile, 'w') as fp:
+                fp.write(result.stdout)
+            os.replace(tmpfile, xwiki_cfg)
+            print("Extracted default xwiki.cfg from container image")
+        else:
+            print(f"Warning: could not extract xwiki.cfg from image: {result.stderr[:200]}", file=sys.stderr)
+            open(xwiki_cfg, 'w').close()
+    except Exception as e:
+        print(f"Warning: could not extract xwiki.cfg: {e}", file=sys.stderr)
+        open(xwiki_cfg, 'w').close()
+
+# --- Full default xwiki.properties extracted from the container image ---
+# We keep the FULL defaults so that critical settings (environment.permanentDirectory,
+# distribution.flavor.*, Solr, etc.) are all present. The generate-xwiki-properties
+# ExecStartPre script then modifies individual properties (SMTP, etc.) in place.
+xwiki_properties = os.path.join(state_dir, 'xwiki.properties')
+if not os.path.exists(xwiki_properties):
+    try:
+        result = subprocess.run(
+            [
+                'podman', 'run', '--rm', '--quiet',
+                xwiki_image,
+                'cat', '/usr/local/tomcat/webapps/ROOT/WEB-INF/xwiki.properties',
+            ],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            tmpfile = xwiki_properties + '.tmp'
+            with open(tmpfile, 'w') as fp:
+                fp.write(result.stdout)
+            os.replace(tmpfile, xwiki_properties)
+            print("Extracted default xwiki.properties from container image")
+        else:
+            print(f"Warning: could not extract xwiki.properties from image: {result.stderr[:200]}", file=sys.stderr)
+            open(xwiki_properties, 'w').close()
+    except Exception as e:
+        print(f"Warning: could not extract xwiki.properties: {e}", file=sys.stderr)
+        open(xwiki_properties, 'w').close()
+
