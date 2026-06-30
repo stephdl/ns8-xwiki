@@ -1,171 +1,147 @@
-# ns8-kickstart
+# ns8-xwiki
 
-This is a template module for [NethServer 8](https://github.com/NethServer/ns8-core).
-To start a new module from it:
+[XWiki](https://www.xwiki.org/) module for [NethServer 8](https://github.com/NethServer/ns8-core).
 
-1. Click on [Use this template](https://github.com/NethServer/ns8-kickstart/generate).
-   Name your repo with `ns8-` prefix (e.g. `ns8-mymodule`). 
-   Do not end your module name with a number, like ~~`ns8-baaad2`~~!
+Runs XWiki 18.5.0 (MariaDB/Tomcat flavour) as a rootless Podman pod alongside
+MariaDB 11.4. The pod uses slirp4netns networking so XWiki can reach the NS8
+LDAP account provider on the host without any extra firewall rules.
 
-1. Clone the repository, enter the cloned directory and
-   [configure your GIT identity](https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup#_your_identity)
+## Architecture
 
-1. Rename some references inside the repo:
-   ```
-   modulename=$(basename $(pwd) | sed 's/^ns8-//') &&
-   git mv imageroot/systemd/user/kickstart.service imageroot/systemd/user/${modulename}.service &&
-   git mv imageroot/systemd/user/kickstart-app.service imageroot/systemd/user/${modulename}-app.service && 
-   git mv tests/kickstart.robot tests/${modulename}.robot &&
-   sed -i "s/kickstart/${modulename}/g" $(find .github/ * -type f) &&
-   git commit -a -m "Repository initialization"
-   ```
+| Container | Image |
+|-----------|-------|
+| `xwiki-app` | `docker.io/xwiki:18.5.0-mariadb-tomcat` |
+| `mariadb-app` | `docker.io/mariadb:11.4.12` |
 
-1. Edit this `README.md` file, by replacing this section with your module
-   description
+Configuration files mounted into the XWiki container at startup:
 
-1. Adjust `.github/workflows` to your needs. `clean-registry.yml` might
-   need the proper list of image names to work correctly. Unused workflows
-   can be disabled from the GitHub Actions interface.
+- `state/xwiki.cfg` — generated/updated by `bin/generate-xwiki-cfg`
+- `state/xwiki.properties` — generated/updated by `bin/generate-xwiki-properties`
 
-1. Commit and push your local changes
+### Networking — LDAP access
+
+The pod is created with:
+
+```
+--network=slirp4netns:allow_host_loopback=true
+--add-host=accountprovider:10.0.2.2
+```
+
+This allows XWiki to connect to the NS8 LDAP proxy on the host using the
+hostname `accountprovider`. LDAP and SMTP are **not** auto-configured —
+configure them manually through the XWiki administration UI after installation.
+
+### Config generation at startup
+
+`bin/generate-xwiki-cfg` (runs as `ExecStartPre` in `xwiki-app.service`):
+- sets `xwiki.home` to the public URL behind Traefik
+- sets `xwiki.superadminpassword` from `state/passwords.env`
+- injects the default plugin list if `xwiki.cfg` predates the image-extraction fix
+
+`bin/generate-xwiki-properties` (runs as `ExecStartPre` in `xwiki-app.service`):
+- ensures `extension.repositories` is present so the Extension Manager can
+  reach the XWiki Maven repository and extension registry
 
 ## Install
 
-Instantiate the module with:
+```
+add-module ghcr.io/nethserver/xwiki:latest 1
+```
 
-    add-module ghcr.io/nethserver/kickstart:latest 1
+Example output:
 
-The output of the command will return the instance name.
-Output example:
-
-    {"module_id": "kickstart1", "image_name": "kickstart", "image_url": "ghcr.io/nethserver/kickstart:latest"}
+```json
+{"module_id":"xwiki1","image_name":"xwiki","image_url":"ghcr.io/nethserver/xwiki:latest"}
+```
 
 ## Configure
 
-Let's assume that the mattermost instance is named `kickstart1`.
+Module instance is named `xwiki1`. Launch `configure-module`:
 
-Launch `configure-module`, by setting the following parameters:
-- `host`: a fully qualified domain name for the application
-- `http2https`: enable or disable HTTP to HTTPS redirection (true/false)
-- `lets_encrypt`: enable or disable Let's Encrypt certificate (true/false)
-
-
-Example:
-
-```
-api-cli run configure-module --agent module/kickstart1 --data - <<EOF
+```bash
+api-cli run configure-module --agent module/xwiki1 --data - <<EOF
 {
-  "host": "kickstart.domain.com",
+  "host": "xwiki.domain.com",
   "http2https": true,
-  "lets_encrypt": false
+  "lets_encrypt": false,
+  "java_heap_mb": 1024
 }
 EOF
 ```
 
-The above command will:
-- start and configure the kickstart instance
-- configure a virtual host for trafik to access the instance
+Parameters:
 
-## Get the configuration
-You can retrieve the configuration with
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `host` | string | FQDN for XWiki (e.g. `xwiki.domain.com`) |
+| `http2https` | bool | Redirect HTTP → HTTPS |
+| `lets_encrypt` | bool | Request a Let's Encrypt certificate |
+| `java_heap_mb` | int | JVM max heap in MB (1024–8192, default 1024) |
 
-```
-api-cli run get-configuration --agent module/kickstart1
+The command configures Traefik and restarts XWiki with the new settings.
+
+## Get configuration
+
+```bash
+api-cli run get-configuration --agent module/xwiki1
 ```
 
 ## Uninstall
 
-To uninstall the instance:
-
-    remove-module --no-preserve kickstart1
-
-## Smarthost setting discovery
-
-Some configuration settings, like the smarthost setup, are not part of the
-`configure-module` action input: they are discovered by looking at some
-Redis keys.  To ensure the module is always up-to-date with the
-centralized [smarthost
-setup](https://nethserver.github.io/ns8-core/core/smarthost/) every time
-kickstart starts, the command `bin/discover-smarthost` runs and refreshes
-the `state/smarthost.env` file with fresh values from Redis.
-
-Furthermore if smarthost setup is changed when kickstart is already
-running, the event handler `events/smarthost-changed/10reload_services`
-restarts the main module service.
-
-See also the `systemd/user/kickstart.service` file.
-
-This setting discovery is just an example to understand how the module is
-expected to work: it can be rewritten or discarded completely.
+```bash
+remove-module --no-preserve xwiki1
+```
 
 ## Debug
 
-some CLI are needed to debug
+CLI runs under the agent environment. To enter it:
 
-- The module runs under an agent that initiate a lot of environment variables (in /home/kickstart1/.config/state), it could be nice to verify them
-on the root terminal
-
-    `runagent -m kickstart1 env`
-
-- you can become runagent for testing scripts and initiate all environment variables
-  
-    `runagent -m kickstart1`
-
- the path become : 
-```
-    echo $PATH
-    /home/kickstart1/.config/bin:/usr/local/agent/pyenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/usr/
+```bash
+runagent -m xwiki1
 ```
 
-- if you want to debug a container or see environment inside
- `runagent -m kickstart1`
- ```
+Check running containers:
+
+```bash
 podman ps
-CONTAINER ID  IMAGE                                      COMMAND               CREATED        STATUS        PORTS                    NAMES
-d292c6ff28e9  localhost/podman-pause:4.6.1-1702418000                          9 minutes ago  Up 9 minutes  127.0.0.1:20015->80/tcp  80b8de25945f-infra
-d8df02bf6f4a  docker.io/library/mariadb:10.11.5          --character-set-s...  9 minutes ago  Up 9 minutes  127.0.0.1:20015->80/tcp  mariadb-app
-9e58e5bd676f  docker.io/library/nginx:stable-alpine3.17  nginx -g daemon o...  9 minutes ago  Up 9 minutes  127.0.0.1:20015->80/tcp  kickstart-app
 ```
 
-you can see what environment variable is inside the container
-```
-podman exec  kickstart-app env
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-TERM=xterm
-PKG_RELEASE=1
-MARIADB_DB_HOST=127.0.0.1
-MARIADB_DB_NAME=kickstart
-MARIADB_IMAGE=docker.io/mariadb:10.11.5
-MARIADB_DB_TYPE=mysql
-container=podman
-NGINX_VERSION=1.24.0
-NJS_VERSION=0.7.12
-MARIADB_DB_USER=kickstart
-MARIADB_DB_PASSWORD=kickstart
-MARIADB_DB_PORT=3306
-HOME=/root
-```
-
-you can run a shell inside the container
+Example:
 
 ```
-podman exec -ti   kickstart-app sh
-/ # 
+CONTAINER ID  IMAGE                                    COMMAND               CREATED        STATUS        NAMES
+...           localhost/podman-pause:...               ...                   9 minutes ago  Up 9 minutes  xwiki-infra
+...           docker.io/xwiki:18.5.0-mariadb-tomcat   catalina.sh run       9 minutes ago  Up 9 minutes  xwiki-app
+...           docker.io/mariadb:11.4.12                --character-set-...   9 minutes ago  Up 9 minutes  mariadb-app
 ```
+
+Inspect environment inside the XWiki container:
+
+```bash
+podman exec xwiki-app env
+```
+
+Open a shell:
+
+```bash
+podman exec -ti xwiki-app bash
+```
+
+XWiki logs:
+
+```bash
+podman logs -f xwiki-app
+```
+
 ## Testing
 
-Test the module using the `test-module.sh` script:
+```bash
+./test-module.sh <NODE_ADDR> ghcr.io/nethserver/xwiki:latest
+```
 
+Tests are in `tests/xwiki.robot` (Robot Framework). They run in order:
+install → configure → verify → uninstall.
 
-    ./test-module.sh <NODE_ADDR> ghcr.io/nethserver/kickstart:latest
-
-The tests are made using [Robot Framework](https://robotframework.org/)
-
-## UI translation
+## Translation
 
 Translated with [Weblate](https://hosted.weblate.org/projects/ns8/).
-
-To setup the translation process:
-
-- add [GitHub Weblate app](https://docs.weblate.org/en/latest/admin/continuous.html#github-setup) to your repository
-- add your repository to [hosted.weblate.org]((https://hosted.weblate.org) or ask a NethServer developer to add it to ns8 Weblate project
