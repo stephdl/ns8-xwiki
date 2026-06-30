@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# Copyright (C) 2023 Nethesis S.r.l.
+# Copyright (C) 2026 Nethesis S.r.l.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
@@ -12,4 +12,4 @@ set -e
 # Redirect any output to the journal (stderr)
 exec 1>&2
 
-systemctl --user try-restart kickstart.service
+systemctl --user try-restart xwiki.service mariadb-app.service xwiki-app.service
