@@ -1,5 +1,5 @@
 <!--
-  Copyright (C) 2023 Nethesis S.r.l.
+  Copyright (C) 2026 Nethesis S.r.l.
   SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <template>
@@ -43,7 +43,7 @@
       <cv-column :md="4" :max="4">
         <NsInfoCard
           light
-          :title="$t('status.kickstart_webapp')"
+          :title="$t('status.xwiki_webapp')"
           :description="this.host ? this.host : $t('status.not_configured')"
           :icon="Wikis32"
           :loading="loading.getConfiguration"

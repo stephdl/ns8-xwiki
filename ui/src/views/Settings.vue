@@ -1,5 +1,5 @@
 <!--
-  Copyright (C) 2022 Nethesis S.r.l.
+  Copyright (C) 2026 Nethesis S.r.l.
   SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <template>
@@ -24,8 +24,8 @@
         <cv-tile light>
           <cv-form @submit.prevent="configureModule">
             <cv-text-input
-              :label="$t('settings.kickstart_fqdn')"
-              placeholder="kickstart.example.org"
+              :label="$t('settings.xwiki_fqdn')"
+              placeholder="xwiki.example.org"
               v-model.trim="host"
               class="mg-bottom"
               :invalid-message="$t(error.host)"
@@ -98,7 +98,25 @@
             <cv-accordion ref="accordion" class="maxwidth mg-bottom">
               <cv-accordion-item :open="toggleAccordion[0]">
                 <template slot="title">{{ $t("settings.advanced") }}</template>
-                <template slot="content"> </template>
+                <template slot="content">
+                  <div class="mg-bottom">
+                    <NsSlider
+                      v-model="javaHeapMb"
+                      :label="$t('settings.java_heap_mb')"
+                      min="1024"
+                      max="4096"
+                      step="256"
+                      stepMultiplier="4"
+                      minLabel=""
+                      maxLabel=""
+                      unitLabel="MB"
+                      :disabled="loading.getConfiguration || loading.configureModule"
+                    />
+                    <p class="label-description">
+                      {{ $t("settings.java_heap_mb_description") }}
+                    </p>
+                  </div>
+                </template>
               </cv-accordion-item>
             </cv-accordion>
             <cv-row v-if="error.configureModule">
@@ -166,10 +184,12 @@ import {
   TaskService,
   IconService,
   PageTitleService,
+  NsSlider,
 } from "@nethserver/ns8-ui-lib";
 
 export default {
   name: "Settings",
+  components: { NsSlider },
   mixins: [
     TaskService,
     IconService,
@@ -192,6 +212,8 @@ export default {
       isLetsEncryptEnabled: false,
       isLetsEncryptCurrentlyEnabled: false,
       isHttpToHttpsEnabled: true,
+      javaHeapMb: "1024",
+      toggleAccordion: [false],
       loading: {
         getConfiguration: false,
         configureModule: false,
@@ -203,6 +225,7 @@ export default {
         host: "",
         lets_encrypt: "",
         http2https: "",
+        java_heap_mb: "",
         getStatus: "",
       },
     };
@@ -325,6 +348,7 @@ export default {
       this.isLetsEncryptEnabled = config.lets_encrypt;
       this.isLetsEncryptCurrentlyEnabled = config.lets_encrypt;
       this.isHttpToHttpsEnabled = config.http2https;
+      this.javaHeapMb = String(config.java_heap_mb || 1024);
 
       this.loading.getConfiguration = false;
       this.focusElement("host");
@@ -364,8 +388,6 @@ export default {
       }
     },
     async configureModule() {
-      this.error.test_imap = false;
-      this.error.test_smtp = false;
       const isValidationOk = this.validateConfigureModule();
       if (!isValidationOk) {
         return;
@@ -399,6 +421,7 @@ export default {
             host: this.host,
             lets_encrypt: this.isLetsEncryptEnabled,
             http2https: this.isHttpToHttpsEnabled,
+            java_heap_mb: parseInt(this.javaHeapMb, 10),
           },
           extra: {
             title: this.$t("settings.instance_configuration", {
