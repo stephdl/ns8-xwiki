@@ -1,19 +1,19 @@
 {
   "name": "xwiki",
   "description": {
-    "en": "My xwiki module"
+    "en": "XWiki is a free and open source wiki software platform"
   },
-  "categories": [],
+  "categories": ["collaboration"],
   "authors": [
     {
-      "name": "Name Surname",
-      "email": "author@yourmail.org"
+      "name": "stephane de Labrusse",
+      "email": "stephdl@de-labrusse.fr"
     }
   ],
   "docs": {
-    "documentation_url": "https://docs.xwiki.com/",
-    "bug_url": "https://github.com/NethServer/dev",
-    "code_url": "https://github.com/author/ns8-xwiki"
+    "documentation_url": "https://www.xwiki.org",
+    "bug_url": "https://github.com/stephdl/dev/issues",
+    "code_url": "https://github.com/stephdl/ns8-xwiki"
   },
-  "source": "ghcr.io/nethserver/xwiki"
+  "source": "ghcr.io/stephdl/xwiki"
 }
