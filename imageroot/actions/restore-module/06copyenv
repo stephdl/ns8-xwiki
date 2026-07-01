@@ -21,7 +21,6 @@ for evar in [
         "TRAEFIK_HTTP2HTTPS",
         "JAVA_HEAP_MB",
         "JAVA_OPTS",
-        "LDAP_DOMAIN",
     ]:
     if evar in original_environment:
         agent.set_env(evar, original_environment[evar])
