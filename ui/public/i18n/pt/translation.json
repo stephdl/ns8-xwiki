@@ -1,57 +1,77 @@
 {
-    "error": {
-        "403": "Operação não autorizada",
-        "cannot_retrieve_installed_modules": "Não é possível recuperar módulos instalados",
-        "401": "Autenticação inválida",
-        "cannot_retrieve_module_info": "Não é possível recuperar informações do módulo",
-        "generic_error": "Algo deu errado",
-        "error": "Erro",
-        "network_timeout": "Tempo limite da rede",
-        "404": "Recurso não encontrado",
-        "network_error": "Erro de rede",
-        "validation_error": "Erros de validação"
-    },
-    "settings": {
-        "test_field": "Campo de teste",
-        "configure_instance": "Configurar {instância}",
-        "save": "Gravar",
-        "title": "Configurações"
-    },
-    "common": {
-        "required": "Obrigatório",
-        "work_in_progress": "Trabalho em progresso",
-        "processing": "Processando..."
-    },
-    "status": {
-        "created": "Criado",
-        "size": "Tamanho",
-        "name": "Nome",
-        "no_images": "Sem imagens",
-        "app_volumes": "Volume do aplicativo | Volumes dos aplicativos",
-        "services": "Serviço | Serviços",
-        "app_images": "Imagem do aplicativo | Imagens dos aplicativos",
-        "no_services": "Nenhum serviço",
-        "app_instance": "Instância do aplicativo",
-        "mount": "Montar",
-        "title": "Estado",
-        "installation_node": "Nó de instalação",
-        "node": "Node",
-        "no_volumes": "Sem volumes"
-    },
-    "about": {
-        "title": "Sobre"
-    },
-    "action": {
-        "list-backup-repositories": "Listar repositórios de backup",
-        "get-module-info": "Obtenha informações do módulo",
-        "list-installed-modules": "Listar módulos instalados",
-        "list-backups": "Listar backups",
-        "get-status": "Obter status",
-        "configure-module": "Configurar módulo",
-        "get-configuration": "Obter configuração",
-        "get-name": "Obter nome"
-    },
-    "task": {
-        "cannot_create_task": "Não é possível criar a tarefa {action}"
-    }
+  "common": {
+    "required": "Obrigatório",
+    "work_in_progress": "Trabalho em progresso",
+    "processing": "Processando..."
+  },
+  "status": {
+    "title": "Estado",
+    "app_instance": "Instância do aplicativo",
+    "services": "Serviço | Serviços",
+    "app_images": "Imagem do aplicativo | Imagens dos aplicativos",
+    "app_volumes": "Volume do aplicativo | Volumes dos aplicativos",
+    "installation_node": "Nó de instalação",
+    "node": "Node",
+    "name": "Nome",
+    "size": "Tamanho",
+    "created": "Criado",
+    "mount": "Montar",
+    "no_services": "Nenhum serviço",
+    "no_images": "Sem imagens",
+    "no_volumes": "Sem volumes",
+    "xwiki_webapp": "Aplicação web xwiki",
+    "not_configured": "Não configurado",
+    "open_webapp": "Abrir xwiki",
+    "configure": "Configurar"
+  },
+  "settings": {
+    "title": "Configurações",
+    "configure_instance": "Configurar {instance}",
+    "save": "Gravar",
+    "xwiki_fqdn": "Nome de anfitrião xwiki (FQDN)",
+    "lets_encrypt": "Solicitar certificado LE",
+    "http_to_https": "Forçar HTTPS",
+    "enabled": "Ativado",
+    "disabled": "Desativado",
+    "advanced": "Avançado",
+    "configuring": "A configurar",
+    "instance_configuration": "Configurar xwiki",
+    "domain_already_used_in_traefik": "Domínio já utilizado no traefik",
+    "host_pattern": "Deve ser um nome de domínio totalmente qualificado válido",
+    "host_format": "Deve ser um nome de domínio totalmente qualificado válido",
+    "java_heap_mb": "Tamanho do heap da JVM (MB)",
+    "java_heap_mb_description": "Memória máxima alocada ao XWiki (Tomcat JVM). Aumente se o XWiki estiver lento ou apresentar erros de falta de memória.",
+    "ldap_domain": "Domínio de utilizador LDAP",
+    "ldap_domain_placeholder": "Selecione ou digite um domínio",
+    "ldap_domain_none": "Nenhum (autenticação integrada)"
+  },
+  "about": {
+    "title": "Sobre"
+  },
+  "task": {
+    "cannot_create_task": "Não é possível criar a tarefa {action}"
+  },
+  "action": {
+    "get-status": "Obter status",
+    "get-configuration": "Obter configuração",
+    "configure-module": "Configurar módulo",
+    "get-module-info": "Obtenha informações do módulo",
+    "get-name": "Obter nome",
+    "list-backup-repositories": "Listar repositórios de backup",
+    "list-backups": "Listar backups",
+    "list-installed-modules": "Listar módulos instalados"
+  },
+  "error": {
+    "error": "Erro",
+    "generic_error": "Algo deu errado",
+    "validation_error": "Erros de validação",
+    "network_error": "Erro de rede",
+    "network_timeout": "Tempo limite da rede",
+    "401": "Autenticação inválida",
+    "403": "Operação não autorizada",
+    "404": "Recurso não encontrado",
+    "cannot_retrieve_module_info": "Não é possível recuperar informações do módulo",
+    "cannot_retrieve_installed_modules": "Não é possível recuperar módulos instalados",
+    "cannot_retrieve_configuration": "Não é possível recuperar a configuração"
+  }
 }
