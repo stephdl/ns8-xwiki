@@ -80,20 +80,6 @@
                 />
               </cv-column>
             </cv-row>
-            <cv-toggle
-              value="httpToHttps"
-              :label="$t('settings.http_to_https')"
-              v-model="isHttpToHttpsEnabled"
-              :disabled="loading.getConfiguration || loading.configureModule"
-              class="mg-bottom"
-            >
-              <template slot="text-left">{{
-                $t("settings.disabled")
-              }}</template>
-              <template slot="text-right">{{
-                $t("settings.enabled")
-              }}</template>
-            </cv-toggle>
             <!-- advanced options -->
             <cv-accordion ref="accordion" class="maxwidth mg-bottom">
               <cv-accordion-item :open="toggleAccordion[0]">
@@ -211,7 +197,6 @@ export default {
       host: "",
       isLetsEncryptEnabled: false,
       isLetsEncryptCurrentlyEnabled: false,
-      isHttpToHttpsEnabled: true,
       javaHeapMb: "1024",
       toggleAccordion: [false],
       loading: {
@@ -224,7 +209,6 @@ export default {
         configureModule: "",
         host: "",
         lets_encrypt: "",
-        http2https: "",
         java_heap_mb: "",
         getStatus: "",
       },
@@ -347,7 +331,6 @@ export default {
       this.host = config.host;
       this.isLetsEncryptEnabled = config.lets_encrypt;
       this.isLetsEncryptCurrentlyEnabled = config.lets_encrypt;
-      this.isHttpToHttpsEnabled = config.http2https;
       this.javaHeapMb = String(config.java_heap_mb || 1024);
 
       this.loading.getConfiguration = false;
@@ -420,7 +403,6 @@ export default {
           data: {
             host: this.host,
             lets_encrypt: this.isLetsEncryptEnabled,
-            http2https: this.isHttpToHttpsEnabled,
             java_heap_mb: parseInt(this.javaHeapMb, 10),
           },
           extra: {

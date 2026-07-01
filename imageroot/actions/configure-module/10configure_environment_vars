@@ -12,9 +12,7 @@ import agent
 data = json.load(sys.stdin)
 
 host = data["host"]
-h2hs = data.get("http2https", True)
 agent.set_env("TRAEFIK_HOST", host)
-agent.set_env("TRAEFIK_HTTP2HTTPS", h2hs)
 
 # JVM heap size in MB — controls XWiki Tomcat memory allocation
 java_heap_mb = int(data.get("java_heap_mb", 1024))

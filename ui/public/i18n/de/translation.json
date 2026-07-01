@@ -30,7 +30,6 @@
     "save": "Speichern",
     "xwiki_fqdn": "xwiki Hostname (FQDN)",
     "lets_encrypt": "LE-Zertifikat anfordern",
-    "http_to_https": "HTTPS erzwingen",
     "enabled": "Aktiviert",
     "disabled": "Deaktiviert",
     "advanced": "Erweitert",

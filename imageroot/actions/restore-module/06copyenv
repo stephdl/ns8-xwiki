@@ -18,7 +18,6 @@ original_environment = request['environment']
 # by Restic (via etc/state-include.conf) and must never transit through Redis.
 for evar in [
         "TRAEFIK_HOST",
-        "TRAEFIK_HTTP2HTTPS",
         "JAVA_HEAP_MB",
         "JAVA_OPTS",
     ]:

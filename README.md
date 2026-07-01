@@ -62,7 +62,6 @@ Module instance is named `xwiki1`. Launch `configure-module`:
 api-cli run configure-module --agent module/xwiki1 --data - <<EOF
 {
   "host": "xwiki.domain.com",
-  "http2https": true,
   "lets_encrypt": false,
   "java_heap_mb": 1024
 }
@@ -74,7 +73,6 @@ Parameters:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `host` | string | FQDN for XWiki (e.g. `xwiki.domain.com`) |
-| `http2https` | bool | Redirect HTTP → HTTPS |
 | `lets_encrypt` | bool | Request a Let's Encrypt certificate |
 | `java_heap_mb` | int | JVM max heap in MB (1024–8192, default 1024) |
 

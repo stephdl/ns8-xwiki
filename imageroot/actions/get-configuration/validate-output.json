@@ -4,13 +4,10 @@
     "$id": "http://nethserver.org/json-schema/task/output/xwiki/get-configuration",
     "description": "Get xwiki configuration output",
     "type": "object",
-    "required": ["host", "http2https", "lets_encrypt", "java_heap_mb"],
+    "required": ["host", "lets_encrypt", "java_heap_mb"],
     "properties": {
         "host": {
             "type": "string"
-        },
-        "http2https": {
-            "type": "boolean"
         },
         "lets_encrypt": {
             "type": "boolean"
