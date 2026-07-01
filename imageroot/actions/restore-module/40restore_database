@@ -8,13 +8,21 @@
 set -e -o pipefail
 exec 1>&2 # Redirect any output to the journal (stderr)
 
+declare -A passwords
+while IFS='=' read -r key value; do
+    passwords[$key]=$value
+done < "${AGENT_STATE_DIR}/passwords.env"
+
+DB_ROOT_PASSWORD=${passwords[DB_ROOT_PASSWORD]}
+DB_PASSWORD=${passwords[DB_PASSWORD]}
+
 # Prepare an initialization script that restores the dump file
 mkdir -vp initdb.d
 mv -v xwiki.sql initdb.d
 #do the bash file to restore and exit once done
 cat - >initdb.d/zz_xwiki_restore.sh <<'EOS'
 # Print additional information:
-mysql --version
+mariadb --version
 # The script is sourced, override entrypoint args and exit:
 set -- true
 docker_temp_server_stop
@@ -22,7 +30,7 @@ exit 0
 EOS
 
 # once we exit we remove initdb.d
-trap 'rm -rfv initdb.d/' EXIT
+trap 'rm -fv initdb.d/xwiki.sql initdb.d/zz_xwiki_restore.sh' EXIT
 
 # we start a container to initiate a database and load the dump
 # at the end of xwiki_restore.sh the dump is loaded and 
@@ -33,9 +41,9 @@ podman run \
   --network=none \
   --volume=./initdb.d:/docker-entrypoint-initdb.d:z \
   --volume mysql-data:/var/lib/mysql/:Z \
-  --env MARIADB_ROOT_PASSWORD=Nethesis,1234 \
+  --env MARIADB_ROOT_PASSWORD="${DB_ROOT_PASSWORD}" \
   --env MARIADB_DATABASE=xwiki \
   --env MARIADB_USER=xwiki \
-  --env MARIADB_PASSWORD=xwiki \
+  --env MARIADB_PASSWORD="${DB_PASSWORD}" \
   --replace --name=restore_db \
   ${MARIADB_IMAGE}

@@ -11,7 +11,15 @@ if ! systemctl --user -q is-active xwiki.service; then
     exit 0
 fi
 
-podman exec mariadb-app mysqldump \
+declare -A passwords
+while IFS='=' read -r key value; do
+    passwords[$key]=$value
+done < "${AGENT_STATE_DIR}/passwords.env"
+
+DB_ROOT_PASSWORD=${passwords[DB_ROOT_PASSWORD]}
+
+podman exec mariadb-app mariadb-dump \
+        -uroot -p"${DB_ROOT_PASSWORD}" \
         --databases xwiki \
         --default-character-set=utf8mb4 \
         --skip-dump-date \
