@@ -16,6 +16,11 @@ done < "${AGENT_STATE_DIR}/passwords.env"
 DB_ROOT_PASSWORD=${passwords[DB_ROOT_PASSWORD]}
 DB_PASSWORD=${passwords[DB_PASSWORD]}
 
+if [ -z "${DB_ROOT_PASSWORD}" ] || [ -z "${DB_PASSWORD}" ]; then
+    echo "Missing DB_ROOT_PASSWORD or DB_PASSWORD in ${AGENT_STATE_DIR}/passwords.env" >&2
+    exit 1
+fi
+
 # Prepare an initialization script that restores the dump file
 mkdir -vp initdb.d
 mv -v xwiki.sql initdb.d

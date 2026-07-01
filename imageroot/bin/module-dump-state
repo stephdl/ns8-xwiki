@@ -18,6 +18,11 @@ done < "${AGENT_STATE_DIR}/passwords.env"
 
 DB_ROOT_PASSWORD=${passwords[DB_ROOT_PASSWORD]}
 
+if [ -z "${DB_ROOT_PASSWORD}" ]; then
+    echo "Missing DB_ROOT_PASSWORD in ${AGENT_STATE_DIR}/passwords.env" >&2
+    exit 1
+fi
+
 podman exec mariadb-app mariadb-dump \
         -uroot -p"${DB_ROOT_PASSWORD}" \
         --databases xwiki \
