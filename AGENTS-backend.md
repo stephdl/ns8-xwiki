@@ -69,6 +69,26 @@ Modules with a UI must implement:
 - `configure-module` — validate + apply config
 - `get-configuration` — return current config (mirrors configure-module input)
 
+### Logging to journald
+
+**stdout is reserved for action output (JSON). All log messages must go to stderr.**
+The NS8 agent framework captures stdout as the action's return value — printing to stdout corrupts the output.
+
+In Python scripts:
+```python
+import sys, agent
+print("informational message", file=sys.stderr)              # plain log
+print(agent.SD_WARNING + "something unexpected", file=sys.stderr)  # warning level
+print(agent.SD_ERR + "critical failure", file=sys.stderr)          # error level
+```
+
+In bash scripts, redirect stdout to stderr at the top of the file:
+```bash
+exec 1>&2   # all subsequent echo/printf go to journald
+```
+
+`agent.SD_WARNING`, `agent.SD_ERR`, `agent.SD_INFO`, `agent.SD_NOTICE` are systemd journal priority prefixes — journald parses them to set log level.
+
 ### Agent SDK (Python)
 ```python
 import agent
@@ -78,12 +98,23 @@ agent.set_env("KEY", "value")   # add/update env var in state/environment
 agent.unset_env("KEY")          # remove env var from state/environment
 ```
 
-> **Note:** env vars live in Redis — all node modules can read them.
-> For secrets, write to `state/<file>`, include in `etc/state-include.conf`, and read in the relevant action.
+> **⚠️ SECURITY — `agent.set_env()` writes to Redis plain text, readable by ALL modules on the node. NEVER store passwords/tokens/secrets via `agent.set_env()`.**
+>
+> **Secret pattern:** generate in `create-module/10genpasswords` → write `state/passwords.env` (mode 0600) → declare in `etc/state-include.conf` (Restic backup) → load via systemd `EnvironmentFile=-%S/state/passwords.env` → inject into container via `--env-file=%S/state/passwords.env`. Restic restores the file on `restore-module` — no extra action needed. Non-secret vars (`TRAEFIK_HOST`, `LDAP_DOMAIN`, etc.) use `agent.set_env()` normally.
+>
+> ```python
+> # create-module/10genpasswords
+> import secrets, os
+> p = os.path.join(os.environ["AGENT_STATE_DIR"], "passwords.env")
+> with open(p, "w") as f:
+>     f.write(f"DB_PASSWORD={secrets.token_urlsafe(16)}\n")
+> os.chmod(p, 0o600)
+> ```
 
 #### Progress reporting
 Requires frontend `isProgressNotified: true` (see AGENTS-frontend.md § Task progress):
 ```python
+import os, agent
 agent.set_progress(50)        # emit 0-100 to frontend progress bar
 agent.set_weight(os.path.basename(__file__), 0)  # exclude step from auto-progress (validation steps)
 ```
@@ -196,28 +227,60 @@ Cluster channel `cluster/event/<name>`: `module-added`, `module-removed`, `leade
 - Multi-service (pod pattern): `<module>.service` (pod master) + `<component>-app.service` (children)
 
 ### Multi-service ordering (pod pattern)
-- Pod master (`<module>.service`): `Requires=` + `Before=` all children
-- DB service: `BindsTo=<module>.service`, `After=<module>.service`, `Before=app-app.service`
-- App service: `BindsTo=<module>.service`, `After=<module>.service db-app.service`
 
-`BindsTo=` ensures children stop automatically if the pod dies.
+Boot order: **pod → DB → app**. Each unit must declare its relationships explicitly.
+
+**Pod master (`<module>.service`)** — owns the pod, must declare all children:
+```ini
+[Unit]
+Requires=mariadb-app.service myapp-app.service
+Before=mariadb-app.service myapp-app.service
+```
+
+**DB service (`mariadb-app.service`)** — starts after pod, before app:
+```ini
+[Unit]
+BindsTo=<module>.service
+After=<module>.service
+Before=myapp-app.service
+```
+
+**App service (`myapp-app.service`)** — starts last, after pod and DB:
+```ini
+[Unit]
+BindsTo=<module>.service
+After=<module>.service mariadb-app.service
+```
+
+`BindsTo=` ensures children stop automatically when the pod dies. Without it, children keep running as orphans.
 
 ### Conditional service start (configure-module/80start_services)
 Services are enabled and started only after successful configuration.
-For a pod module, **all services must be named explicitly** to guarantee
-the `Before=`/`After=` start order is respected — systemd does not cascade
-restarts to children automatically:
+
+> **⚠️ WRONG — starting only the pod service does NOT start children:**
+> ```bash
+> systemctl --user restart <module>.service   # WRONG — children stay down
+> ```
+> systemd does NOT cascade restarts to children automatically.
+
+**CORRECT — list every service explicitly** to guarantee `Before=`/`After=` order is respected:
 ```bash
 systemctl --user enable <module>.service
-systemctl --user restart <module>.service db-app.service app-app.service
 # Use try-restart if the service may not be running yet (e.g. first configure)
 systemctl --user try-restart <module>.service db-app.service app-app.service
 ```
+All three (or more) services must appear in the command. Order matters: pod first, then DB, then app.
 
 ## Backup & Restore
 
 ### Declaring what to back up (state-include.conf)
 `imageroot/etc/state-include.conf` lists paths relative to the module home. Use `state/<file>` for files in `AGENT_STATE_DIR` and `volumes/<name>` for Podman volumes (`<module_id>-<name>` when rootful). `state/environment` is always included automatically.
+
+**Only include files that are NOT provided by the module image.** If a file in `state/` is derived from or identical to a file shipped in `imageroot/` (e.g. `state/initdb.d/init.sql` copied from `imageroot/sql/init.sql`), do NOT back it up — regenerate it during restore instead. Back up only:
+- User data volumes (`volumes/myapp-data`)
+- SQL/DB dumps (`state/mydb.sql`, `state/mydb.pg_dump`)
+- Secrets generated at install time (`state/passwords.env`)
+- Any runtime state not reproducible from the image
 
 ### Restore sequence
 `imageroot/actions/restore-module/` — numbered steps, `10restore` inherited (Restic).
@@ -225,6 +288,20 @@ systemctl --user try-restart <module>.service db-app.service app-app.service
 - `06copyenv` — restore env vars from `request['environment']` via `agent.set_env()`
 - `40restoreDB` — load SQL dump via ephemeral container (see patterns below)
 - `50call-configure-module` — call `configure-module` with restored env vars via `agent.tasks.run()`
+
+> **⚠️ `50call-configure-module` must pass ALL vars restored by `06copyenv`**, not just the Traefik ones.
+> `06copyenv` restores every non-secret env var set by `agent.set_env()`.
+> Missing any var leaves `configure-module` with wrong/empty defaults.
+>
+> Pattern — read from `os.environ` (already populated by `06copyenv`), map to `configure-module` input:
+> ```python
+> agent.tasks.run("module/" + os.environ["MODULE_ID"], action="configure-module", data={
+>     "host":      os.environ["TRAEFIK_HOST"],
+>     "http2https": os.environ.get("TRAEFIK_HTTP2HTTPS", "false") == "true",
+>     # ALL other fields accepted by configure-module — check validate-input.json
+> })
+> ```
+> Read `configure-module/validate-input.json` to enumerate every required/optional field.
 
 ### MariaDB
 - **Dump** (`imageroot/bin/module-dump-state`, CWD=`state/`): `podman exec mariadb-app mysqldump --databases mydb --default-character-set=utf8mb4 --single-transaction --quick --add-drop-table --skip-dump-date > mydb.sql`
