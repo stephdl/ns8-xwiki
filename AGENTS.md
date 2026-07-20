@@ -1,11 +1,38 @@
 # NS8 Module — Architecture Guide
 
-> **Detailed guides:** backend → `AGENTS-backend.md` | frontend → `AGENTS-frontend.md`
+> **Before starting work, read the matching guide:**
+> - **Backend** (actions, events, systemd, Python/bash, Redis, backup) → **read `AGENTS-backend.md`**
+> - **Frontend** (`ui/`, Vue 2, Vuex, Carbon, `ns8-ui-lib`) → **read `AGENTS-frontend.md`**
+>
+> These are not auto-loaded. Read the relevant file with the Read tool before writing any code in that layer.
 
 ## Platform Overview
 NS8 is a modular Linux server platform. Each module runs in a Podman container,
 rootless by default. Some modules require rootful mode — declared in `build-images.sh`
 via `--label="org.nethserver.rootfull=1"`.
+
+### Container image versions and Renovate
+
+Third-party images pulled at runtime are declared in `build-images.sh` via:
+```bash
+--label="org.nethserver.images=docker.io/mariadb:11.4.12 docker.io/xwiki:16.10.18-mariadb-tomcat"
+```
+
+**RULE: always use a fully pinned version tag — never a floating tag like `lts`, `latest`, or `11.4-lts`.**
+Renovate reads this label to track upstream releases and open automatic update PRs.
+A floating tag gives Renovate nothing to compare against — updates are silently skipped.
+
+Correct: `mariadb:11.4.12`, `nginx:1.27.5`
+Wrong: `mariadb:11.4-lts`, `nginx:latest`
+
+**RULE: never invent or guess a version tag. Always verify the tag exists before using it.**
+Check available tags on Docker Hub before writing any image reference:
+```bash
+# List available tags for an image
+curl -s "https://hub.docker.com/v2/repositories/library/mariadb/tags/?page_size=20" \
+  | python3 -c "import sys,json; [print(t['name']) for t in json.load(sys.stdin)['results']]"
+```
+Or browse `https://hub.docker.com/_/mariadb/tags` directly. A non-existent tag silently fails at pull time and breaks the module.
 
 ## Module Directory Layout
 ```
