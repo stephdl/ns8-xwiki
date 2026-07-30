@@ -1,12 +1,15 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "local>NethServer/.github:ns8"
-  ],
+  "extends": ["local>NethServer/.github:ns8"],
   "packageRules": [
     {
       "matchPackageNames": ["xwiki"],
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-mariadb-tomcat$"
+    },
+    {
+      "matchPackageNames": ["mariadb"],
+      "allowedVersions": "11.4.*",
+      "groupName": "MariaDB 11.4 LTS updates"
     }
   ]
 }
