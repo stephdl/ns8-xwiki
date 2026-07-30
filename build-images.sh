@@ -40,7 +40,7 @@ buildah config --entrypoint=/ \
     --label="org.nethserver.tcp-ports-demand=1" \
     --label="org.nethserver.rootfull=0" \
     --label="org.nethserver.min-core=3.12.4-0" \
-    --label="org.nethserver.images=docker.io/xwiki:18.5.0-mariadb-tomcat docker.io/mariadb:11.4.12" \
+    --label="org.nethserver.images=docker.io/xwiki:18.5.0-mariadb-tomcat docker.io/mariadb:11.8.8" \
     "${container}"
 # Commit the image
 buildah commit "${container}" "${repobase}/${reponame}"
