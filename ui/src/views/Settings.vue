@@ -96,7 +96,9 @@
                       minLabel=""
                       maxLabel=""
                       unitLabel="MB"
-                      :disabled="loading.getConfiguration || loading.configureModule"
+                      :disabled="
+                        loading.getConfiguration || loading.configureModule
+                      "
                     />
                     <p class="label-description">
                       {{ $t("settings.java_heap_mb_description") }}
