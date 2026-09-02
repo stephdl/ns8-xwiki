@@ -6,6 +6,14 @@ Runs XWiki 18.5.0 (MariaDB/Tomcat flavour) as a rootless Podman pod alongside
 MariaDB 11.4. The pod uses slirp4netns networking so XWiki can reach the NS8
 LDAP account provider on the host without any extra firewall rules.
 
+## Sponsor
+
+The port of XWiki to NethServer 8 was funded by
+[Constance Associés](https://www.constance-associes.fr/). Our thanks go to
+Nicolas Braun, who sponsored the work and asked for it to be published under
+the GPL-3.0-or-later rather than kept private, so that anyone can run, study
+and improve it.
+
 ## Architecture
 
 | Container | Image |
