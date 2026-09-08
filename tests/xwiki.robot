@@ -42,8 +42,10 @@ xwiki answers behind Traefik
     # because a status check alone passes on an empty 302 and I could not
     # verify what a configured instance serves. Tighten it with a real marker
     # once known, the way ns8-pihole greps <form id="loginform">.
+    # --resolve rather than a Host header: the root redirects, and curl must be
+    # able to follow it whether the Location comes back relative or absolute.
     ${output}  ${rc} =    Execute Command
-    ...    curl -fsSk -H 'Host: ${TEST_HOST}' https://127.0.0.1/
+    ...    curl -fsSkL --resolve ${TEST_HOST}:443:127.0.0.1 --resolve ${TEST_HOST}:80:127.0.0.1 https://${TEST_HOST}/
     ...    return_rc=True
     Should Be Equal As Integers    ${rc}  0
     Should Not Be Empty    ${output}
