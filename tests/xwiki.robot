@@ -1,6 +1,9 @@
 *** Settings ***
 Library    SSHLibrary
 
+*** Variables ***
+${TEST_HOST}    xwiki.ns8-ci.test
+
 *** Test Cases ***
 Check if xwiki is installed correctly
     ${output}  ${rc} =    Execute Command    add-module ${IMAGE_URL} 1
@@ -10,16 +13,37 @@ Check if xwiki is installed correctly
     Set Suite Variable    ${module_id}    ${output.module_id}
 
 Check if xwiki can be configured
-    ${rc} =    Execute Command    api-cli run module/${module_id}/configure-module --data '{}'
+    ${rc} =    Execute Command
+    ...    api-cli run module/${module_id}/configure-module --data '{"host":"${TEST_HOST}","lets_encrypt":false}'
     ...    return_rc=True  return_stdout=False
     Should Be Equal As Integers    ${rc}  0
 
-Check if xwiki works as expected
-    ${rc} =    Execute Command    curl -f http://127.0.0.1/xwiki/
-    ...    return_rc=True  return_stdout=False
+Check if xwiki configuration reads back
+    ${output}  ${rc} =    Execute Command    api-cli run module/${module_id}/get-configuration --data '{}'
+    ...    return_rc=True
     Should Be Equal As Integers    ${rc}  0
+    ${config} =    Evaluate    json.loads('''${output}''')    modules=json
+    Should Be Equal    ${config}[host]    ${TEST_HOST}
+
+Check if the xwiki virtualhost answers
+    Wait Until Keyword Succeeds    300s    10s    xwiki answers behind Traefik
 
 Check if xwiki is removed correctly
     ${rc} =    Execute Command    remove-module --no-preserve ${module_id}
     ...    return_rc=True  return_stdout=False
     Should Be Equal As Integers    ${rc}  0
+
+*** Keywords ***
+xwiki answers behind Traefik
+    # configure_traefik hardcodes http2https, so the route only answers on TLS,
+    # with a self-signed certificate the node generated for itself.
+    #
+    # Deliberately weak: this asserts a non-empty body rather than a string,
+    # because a status check alone passes on an empty 302 and I could not
+    # verify what a configured instance serves. Tighten it with a real marker
+    # once known, the way ns8-pihole greps <form id="loginform">.
+    ${output}  ${rc} =    Execute Command
+    ...    curl -fsSk -H 'Host: ${TEST_HOST}' https://127.0.0.1/
+    ...    return_rc=True
+    Should Be Equal As Integers    ${rc}  0
+    Should Not Be Empty    ${output}
