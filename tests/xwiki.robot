@@ -30,6 +30,51 @@ Check if xwiki configuration reads back
 Check if the xwiki virtualhost answers
     Wait Until Keyword Succeeds    300s    10s    xwiki answers behind Traefik
 
+Check if the generated configuration carries the host
+    # bin/generate-xwiki-cfg and generate-xwiki-properties render these two
+    # files at every start, and state-include.conf backs them up
+    ${output}  ${rc} =    Execute Command
+    ...    runagent -m ${module_id} bash -c 'grep -c . $AGENT_STATE_DIR/xwiki.cfg $AGENT_STATE_DIR/xwiki.properties'
+    ...    return_rc=True
+    Should Be Equal As Integers    ${rc}  0
+    Should Not Contain    ${output}    :0
+
+Check if the database dump is consistent
+    # state-include.conf lists state/xwiki.sql, produced by module-dump-state
+    ${rc} =    Execute Command    runagent -m ${module_id} module-dump-state
+    ...    return_rc=True  return_stdout=False
+    Should Be Equal As Integers    ${rc}  0
+    ${output}  ${rc} =    Execute Command
+    ...    runagent -m ${module_id} bash -c 'head -3 $AGENT_STATE_DIR/xwiki.sql'
+    ...    return_rc=True
+    Should Be Equal As Integers    ${rc}  0
+    Should Contain    ${output}    MariaDB dump
+
+Check if the database passwords stay in state
+    # They live in state/passwords.env, never in Redis: the module environment
+    # must not carry them
+    ${output}  ${rc} =    Execute Command
+    ...    runagent -m ${module_id} bash -c 'grep -c PASSWORD $AGENT_STATE_DIR/passwords.env; cat $AGENT_STATE_DIR/environment'
+    ...    return_rc=True
+    Should Be Equal As Integers    ${rc}  0
+    Should Not Contain    ${output}    DB_ROOT_PASSWORD=
+
+Check if the services are running
+    ${rc} =    Execute Command
+    ...    runagent -m ${module_id} systemctl --user is-active xwiki.service xwiki-app.service mariadb-app.service
+    ...    return_rc=True  return_stdout=False
+    Should Be Equal As Integers    ${rc}  0
+
+Check if a configuration without the host is refused
+    # The agent exits 10 on a JSON Schema input validation failure
+    ${errors}  ${rc} =    Execute Command
+    ...    api-cli run module/${module_id}/configure-module --data '{"lets_encrypt":false}'
+    ...    return_rc=True
+    Should Be Equal As Integers    ${rc}  10
+    # A missing required field is reported on the whole object, and the field
+    # name goes to stderr, which Execute Command does not return here
+    Should Contain    ${errors}    (root)_required
+
 Take screenshots of the module pages
     [Documentation]    Capture what cluster-admin shows, for the software center
     ...                entry. Tagged ui: the shared runner skips it unless
