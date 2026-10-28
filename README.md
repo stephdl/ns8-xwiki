@@ -2,7 +2,7 @@
 
 [XWiki](https://www.xwiki.org/) module for [NethServer 8](https://github.com/NethServer/ns8-core).
 
-Runs XWiki 18.5.0 (MariaDB/Tomcat flavour) as a rootless Podman pod alongside
+Runs XWiki (MariaDB/Tomcat flavour) as a rootless Podman pod alongside
 MariaDB 11.4. The pod uses slirp4netns networking so XWiki can reach the NS8
 LDAP account provider on the host without any extra firewall rules.
 
